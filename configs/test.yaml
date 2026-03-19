@@ -1,0 +1,25 @@
+model:
+  name: "mlx-community/Qwen1.5-0.5B-Chat"
+  max_tokens: 512
+
+dataset:
+  path: "data/train.jsonl"
+  format: "instruct"
+  train_split: 0.8
+
+training:
+  epochs: 3
+  batch_size: 2
+  learning_rate: 2e-5
+  lora_rank: 2
+  lora_alpha: 2
+  lora_dropout: 0.0
+  save_every: 10
+  output_dir: "runs/"
+
+eval:
+  metrics: ["loss", "rouge"]
+
+logging:
+  level: "INFO"
+  wandb: false

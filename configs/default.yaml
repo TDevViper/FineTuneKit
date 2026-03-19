@@ -1,0 +1,25 @@
+model:
+  name: "mlx-community/Mistral-7B-Instruct-v0.2-4bit"
+  max_tokens: 512
+
+dataset:
+  path: "data/train.jsonl"
+  format: "instruct"        # instruct | completion | chat
+  train_split: 0.9
+
+training:
+  epochs: 3
+  batch_size: 4
+  learning_rate: 1e-4
+  lora_rank: 8
+  lora_alpha: 16
+  lora_dropout: 0.05
+  save_every: 100
+  output_dir: "runs/"
+
+eval:
+  metrics: ["loss", "rouge"]
+
+logging:
+  level: "INFO"
+  wandb: false
