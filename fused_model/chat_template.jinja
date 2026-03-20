@@ -1,0 +1,6 @@
+{% for message in messages %}{% if loop.first and messages[0]['role'] != 'system' %}{{ '<|im_start|>system
+You are a helpful assistant<|im_end|>
+' }}{% endif %}{{'<|im_start|>' + message['role'] + '
+' + message['content']}}{% if (loop.last and add_generation_prompt) or not loop.last %}{{ '<|im_end|>' + '
+'}}{% endif %}{% endfor %}{% if add_generation_prompt and messages[-1]['role'] != 'assistant' %}{{ '<|im_start|>assistant
+' }}{% endif %}

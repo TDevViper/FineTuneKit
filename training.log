@@ -1,0 +1,203 @@
+╭─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ FineTuneKit  run: eb03c0a0                                                                                                                              │
+│ Model: mlx-community/Qwen1.5-0.5B-Chat                                                                                                                  │
+│ Dataset: data/train.jsonl                                                                                                                               │
+╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+Loaded 20 rows from data/train.jsonl
+   Dataset Validation   
+┏━━━━━━━━━━━━━━┳━━━━━━━┓
+┃ Metric       ┃ Value ┃
+┡━━━━━━━━━━━━━━╇━━━━━━━┩
+│ Total rows   │ 20    │
+│ Valid rows   │ 20    │
+│ Dropped rows │ 0     │
+└──────────────┴───────┘
+Split → train: 16  val: 4
+MLX detected — using real LoRA trainer 🍎
+Loading model: mlx-community/Qwen1.5-0.5B-Chat
+Fetching 9 files:   0%|          | 0/9 [00:00<?, ?it/s]Fetching 9 files: 100%|██████████| 9/9 [00:00<00:00, 19026.58it/s]
+Starting LoRA training — 160 iters, warmup=10, grad clip=1.0 🍎
+Iter   1: loss=0.573  grad_norm=46.93  lr=1.00e-06
+Iter   2: loss=1.372  grad_norm=61.68  lr=2.00e-06
+Iter   3: loss=0.707  grad_norm=64.92  lr=3.00e-06
+Iter   4: loss=0.133  grad_norm=26.18  lr=4.00e-06
+Iter   5: loss=0.780  grad_norm=62.92  lr=5.00e-06
+Iter   6: loss=1.448  grad_norm=60.34  lr=6.00e-06
+Iter   7: loss=1.139  grad_norm=61.23  lr=7.00e-06
+Iter   8: loss=1.254  grad_norm=53.41  lr=8.00e-06
+Iter   9: loss=0.192  grad_norm=29.30  lr=9.00e-06
+Iter  10: loss=1.378  grad_norm=49.05  lr=1.00e-05
+Iter  11: loss=1.018  grad_norm=51.54  lr=1.00e-05
+Iter  12: loss=1.473  grad_norm=56.52  lr=1.00e-05
+Iter  13: loss=1.877  grad_norm=91.15  lr=1.00e-05
+Iter  14: loss=0.596  grad_norm=44.40  lr=1.00e-05
+Iter  15: loss=1.220  grad_norm=48.97  lr=1.00e-05
+Iter  16: loss=1.991  grad_norm=44.64  lr=1.00e-05
+Iter  17: loss=0.794  grad_norm=38.15  lr=1.00e-05
+Iter  18: loss=0.505  grad_norm=22.78  lr=1.00e-05
+Iter  19: loss=0.266  grad_norm=31.15  lr=1.00e-05
+Iter  20: loss=1.041  grad_norm=93.94  lr=1.00e-05
+Iter  21: loss=0.447  grad_norm=45.42  lr=1.00e-05
+Iter  22: loss=2.306  grad_norm=85.60  lr=1.00e-05
+Iter  23: loss=1.446  grad_norm=64.69  lr=1.00e-05
+Iter  24: loss=0.349  grad_norm=22.81  lr=1.00e-05
+Iter  25: loss=1.162  grad_norm=42.80  lr=1.00e-05
+Iter  26: loss=0.067  grad_norm=11.21  lr=1.00e-05
+Iter  27: loss=2.871  grad_norm=91.00  lr=1.00e-05
+Iter  28: loss=0.339  grad_norm=46.96  lr=1.00e-05
+Iter  29: loss=0.057  grad_norm=7.27  lr=1.00e-05
+Iter  30: loss=1.264  grad_norm=65.16  lr=1.00e-05
+Iter  31: loss=0.651  grad_norm=34.96  lr=1.00e-05
+Iter  32: loss=1.404  grad_norm=48.46  lr=1.00e-05
+Iter  33: loss=0.009  grad_norm=1.36  lr=1.00e-05
+Iter  34: loss=0.111  grad_norm=16.62  lr=1.00e-05
+Iter  35: loss=0.027  grad_norm=4.97  lr=1.00e-05
+Iter  36: loss=0.085  grad_norm=21.89  lr=1.00e-05
+Iter  37: loss=0.184  grad_norm=25.85  lr=1.00e-05
+Iter  38: loss=1.752  grad_norm=61.35  lr=1.00e-05
+Iter  39: loss=1.607  grad_norm=96.28  lr=1.00e-05
+Iter  40: loss=0.436  grad_norm=32.74  lr=1.00e-05
+Iter  41: loss=0.423  grad_norm=38.93  lr=1.00e-05
+Iter  42: loss=1.019  grad_norm=40.78  lr=1.00e-05
+Iter  43: loss=0.577  grad_norm=23.16  lr=1.00e-05
+Iter  44: loss=0.064  grad_norm=11.53  lr=1.00e-05
+Iter  45: loss=0.285  grad_norm=18.94  lr=1.00e-05
+Iter  46: loss=0.358  grad_norm=35.31  lr=1.00e-05
+Iter  47: loss=0.094  grad_norm=18.25  lr=1.00e-05
+Iter  48: loss=0.635  grad_norm=34.72  lr=1.00e-05
+Iter  49: loss=0.054  grad_norm=10.58  lr=1.00e-05
+Iter  50: loss=0.094  grad_norm=12.44  lr=1.00e-05
+Iter  51: loss=0.013  grad_norm=3.71  lr=1.00e-05
+Iter  52: loss=0.002  grad_norm=0.29  lr=1.00e-05
+Iter  53: loss=0.006  grad_norm=1.35  lr=1.00e-05
+Iter  54: loss=0.012  grad_norm=3.37  lr=1.00e-05
+Iter  55: loss=0.014  grad_norm=2.25  lr=1.00e-05
+Iter  56: loss=0.677  grad_norm=41.89  lr=1.00e-05
+Iter  57: loss=0.005  grad_norm=1.16  lr=1.00e-05
+Iter  58: loss=0.611  grad_norm=40.72  lr=1.00e-05
+Iter  59: loss=2.319  grad_norm=97.25  lr=1.00e-05
+Iter  60: loss=0.233  grad_norm=25.95  lr=1.00e-05
+Iter  61: loss=0.004  grad_norm=0.56  lr=1.00e-05
+Iter  62: loss=1.862  grad_norm=49.81  lr=1.00e-05
+Iter  63: loss=0.012  grad_norm=3.26  lr=1.00e-05
+Iter  64: loss=0.011  grad_norm=8.40  lr=1.00e-05
+Iter  65: loss=0.000  grad_norm=0.09  lr=1.00e-05
+Iter  66: loss=0.017  grad_norm=1.97  lr=1.00e-05
+Iter  67: loss=0.035  grad_norm=6.02  lr=1.00e-05
+Iter  68: loss=1.377  grad_norm=37.26  lr=1.00e-05
+Iter  69: loss=1.034  grad_norm=36.36  lr=1.00e-05
+Iter  70: loss=0.120  grad_norm=34.41  lr=1.00e-05
+Iter  71: loss=0.041  grad_norm=17.87  lr=1.00e-05
+Iter  72: loss=0.001  grad_norm=0.26  lr=1.00e-05
+Iter  73: loss=1.430  grad_norm=39.97  lr=1.00e-05
+Iter  74: loss=0.000  grad_norm=0.07  lr=1.00e-05
+Iter  75: loss=0.002  grad_norm=0.67  lr=1.00e-05
+Iter  76: loss=0.001  grad_norm=0.48  lr=1.00e-05
+Iter  77: loss=0.143  grad_norm=13.59  lr=1.00e-05
+Iter  78: loss=0.200  grad_norm=26.23  lr=1.00e-05
+Iter  79: loss=0.169  grad_norm=27.03  lr=1.00e-05
+Iter  80: loss=0.261  grad_norm=18.96  lr=1.00e-05
+Iter  81: loss=0.010  grad_norm=3.39  lr=1.00e-05
+Iter  82: loss=0.000  grad_norm=0.01  lr=1.00e-05
+Iter  83: loss=0.006  grad_norm=2.08  lr=1.00e-05
+Iter  84: loss=0.185  grad_norm=51.87  lr=1.00e-05
+Iter  85: loss=0.010  grad_norm=4.25  lr=1.00e-05
+Iter  86: loss=0.493  grad_norm=31.82  lr=1.00e-05
+Iter  87: loss=0.000  grad_norm=0.02  lr=1.00e-05
+Iter  88: loss=0.160  grad_norm=19.73  lr=1.00e-05
+Iter  89: loss=0.004  grad_norm=1.43  lr=1.00e-05
+Iter  90: loss=0.002  grad_norm=0.33  lr=1.00e-05
+Iter  91: loss=0.000  grad_norm=0.06  lr=1.00e-05
+Iter  92: loss=0.245  grad_norm=31.84  lr=1.00e-05
+Iter  93: loss=3.158  grad_norm=118.05  lr=1.00e-05
+Iter  94: loss=0.003  grad_norm=0.66  lr=1.00e-05
+Iter  95: loss=0.000  grad_norm=0.01  lr=1.00e-05
+Iter  96: loss=0.000  grad_norm=0.01  lr=1.00e-05
+Iter  97: loss=0.000  grad_norm=0.04  lr=1.00e-05
+Iter  98: loss=0.000  grad_norm=0.00  lr=1.00e-05
+Iter  99: loss=0.000  grad_norm=0.08  lr=1.00e-05
+Iter 100: loss=0.015  grad_norm=5.88  lr=1.00e-05
+Iter 101: loss=0.569  grad_norm=35.60  lr=1.00e-05
+Iter 102: loss=0.000  grad_norm=0.07  lr=1.00e-05
+Iter 103: loss=0.002  grad_norm=1.13  lr=1.00e-05
+Iter 104: loss=0.000  grad_norm=0.04  lr=1.00e-05
+Iter 105: loss=0.000  grad_norm=0.01  lr=1.00e-05
+Iter 106: loss=0.000  grad_norm=0.01  lr=1.00e-05
+Iter 107: loss=0.398  grad_norm=31.02  lr=1.00e-05
+Iter 108: loss=0.815  grad_norm=23.58  lr=1.00e-05
+Iter 109: loss=0.000  grad_norm=0.03  lr=1.00e-05
+Iter 110: loss=0.015  grad_norm=4.64  lr=1.00e-05
+Iter 111: loss=0.000  grad_norm=0.14  lr=1.00e-05
+Iter 112: loss=0.000  grad_norm=0.02  lr=1.00e-05
+Iter 113: loss=0.000  grad_norm=0.01  lr=1.00e-05
+Iter 114: loss=0.000  grad_norm=0.02  lr=1.00e-05
+Iter 115: loss=0.000  grad_norm=0.03  lr=1.00e-05
+Iter 116: loss=0.000  grad_norm=0.08  lr=1.00e-05
+Iter 117: loss=0.000  grad_norm=0.04  lr=1.00e-05
+Iter 118: loss=0.011  grad_norm=1.64  lr=1.00e-05
+Iter 119: loss=0.030  grad_norm=12.96  lr=1.00e-05
+Iter 120: loss=0.000  grad_norm=0.01  lr=1.00e-05
+Iter 121: loss=0.000  grad_norm=0.00  lr=1.00e-05
+Iter 122: loss=0.003  grad_norm=0.32  lr=1.00e-05
+Iter 123: loss=0.000  grad_norm=0.02  lr=1.00e-05
+Iter 124: loss=0.000  grad_norm=0.01  lr=1.00e-05
+Iter 125: loss=0.000  grad_norm=0.04  lr=1.00e-05
+Iter 126: loss=0.000  grad_norm=0.01  lr=1.00e-05
+Iter 127: loss=0.022  grad_norm=1.70  lr=1.00e-05
+Iter 128: loss=0.000  grad_norm=0.00  lr=1.00e-05
+Iter 129: loss=0.000  grad_norm=0.00  lr=1.00e-05
+Iter 130: loss=0.000  grad_norm=0.00  lr=1.00e-05
+Iter 131: loss=0.000  grad_norm=0.00  lr=1.00e-05
+Iter 132: loss=0.000  grad_norm=0.03  lr=1.00e-05
+Iter 133: loss=0.000  grad_norm=0.01  lr=1.00e-05
+Iter 134: loss=0.000  grad_norm=0.00  lr=1.00e-05
+Iter 135: loss=0.000  grad_norm=0.01  lr=1.00e-05
+Iter 136: loss=0.000  grad_norm=0.00  lr=1.00e-05
+Iter 137: loss=0.000  grad_norm=0.00  lr=1.00e-05
+Iter 138: loss=0.000  grad_norm=0.00  lr=1.00e-05
+Iter 139: loss=0.000  grad_norm=0.01  lr=1.00e-05
+Iter 140: loss=0.000  grad_norm=0.01  lr=1.00e-05
+Iter 141: loss=0.000  grad_norm=0.00  lr=1.00e-05
+Iter 142: loss=0.000  grad_norm=0.01  lr=1.00e-05
+Iter 143: loss=0.009  grad_norm=2.65  lr=1.00e-05
+Iter 144: loss=0.000  grad_norm=0.02  lr=1.00e-05
+Iter 145: loss=0.000  grad_norm=0.00  lr=1.00e-05
+Iter 146: loss=0.000  grad_norm=0.00  lr=1.00e-05
+Iter 147: loss=0.000  grad_norm=0.00  lr=1.00e-05
+Iter 148: loss=0.000  grad_norm=0.01  lr=1.00e-05
+Iter 149: loss=0.000  grad_norm=0.00  lr=1.00e-05
+Iter 150: loss=0.000  grad_norm=0.01  lr=1.00e-05
+Iter 151: loss=0.000  grad_norm=0.00  lr=1.00e-05
+Iter 152: loss=0.000  grad_norm=0.00  lr=1.00e-05
+Iter 153: loss=0.000  grad_norm=0.00  lr=1.00e-05
+Iter 154: loss=0.000  grad_norm=0.08  lr=1.00e-05
+Iter 155: loss=0.000  grad_norm=0.01  lr=1.00e-05
+Iter 156: loss=0.000  grad_norm=0.00  lr=1.00e-05
+Iter 157: loss=0.000  grad_norm=0.00  lr=1.00e-05
+Iter 158: loss=0.000  grad_norm=0.00  lr=1.00e-05
+Iter 159: loss=0.000  grad_norm=0.13  lr=1.00e-05
+Iter 160: loss=0.000  grad_norm=0.00  lr=1.00e-05
+Saved adapters → runs/adapters.safetensors
+Metrics saved → runs/metrics.json
+             Training Summary             
+┏━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Metric     ┃ Value                     ┃
+┡━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ Status     │ done                      │
+│ Epochs     │ 10                        │
+│ Final loss │ 0.0                       │
+│ Adapter    │ runs/adapters.safetensors │
+└────────────┴───────────────────────────┘
+  Evaluation Results   
+┏━━━━━━━━━━━━┳━━━━━━━━┓
+┃ Metric     ┃ Value  ┃
+┡━━━━━━━━━━━━╇━━━━━━━━┩
+│ rouge1     │ 0.2842 │
+│ rougeL     │ 0.2501 │
+│ final_loss │ 0.0    │
+└────────────┴────────┘
+Run exported → runs/eb03c0a0/run.json
+Registered run: eb03c0a0
+╭─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Run eb03c0a0 complete ✓                                                                                                                                 │
+╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯

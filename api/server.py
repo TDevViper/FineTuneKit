@@ -258,24 +258,34 @@ async def infer_base(req: InferRequest):
 
 
 def _run_infer(prompt, run_id, use_adapters, max_tokens):
-    import time
+    import time, json as _json
     from mlx_lm import load, generate
     from pathlib import Path as P
 
     run_dir      = P("runs") / run_id
     adapter_file = run_dir / "adapters.safetensors"
 
+    model_name = "mlx-community/Qwen1.5-0.5B-Chat"
+    meta_path  = run_dir / "run.json"
+    if meta_path.exists():
+        try:
+            model_name = _json.loads(meta_path.read_text()).get("model", model_name)
+        except Exception:
+            pass
+
     try:
         if use_adapters and adapter_file.exists():
-            model, tokenizer = load(
-                "mlx-community/Qwen1.5-0.5B-Chat",
-                adapter_path=str(run_dir)
-            )
+            model, tokenizer = load(model_name, adapter_path=str(run_dir))
         else:
-            model, tokenizer = load("mlx-community/Qwen1.5-0.5B-Chat")
+            model, tokenizer = load(model_name)
 
-        nl = chr(10)
-        formatted = "<|im_start|>user" + nl + prompt + "<|im_end|>" + nl + "<|im_start|>assistant" + nl
+        try:
+            formatted = tokenizer.apply_chat_template(
+                [{"role": "user", "content": prompt}],
+                tokenize=False, add_generation_prompt=True)
+        except Exception:
+            nl = chr(10)
+            formatted = "<|im_start|>user" + nl + prompt + "<|im_end|>" + nl + "<|im_start|>assistant" + nl
         t0 = time.time()
         response = generate(model, tokenizer, prompt=formatted, max_tokens=max_tokens, verbose=False)
         elapsed = round(time.time() - t0, 2)
@@ -283,3 +293,106 @@ def _run_infer(prompt, run_id, use_adapters, max_tokens):
     except Exception as e:
         import traceback
         return {"error": str(e), "traceback": traceback.format_exc()}
+
+
+# ── Week 6: Export endpoints ─────────────────────────────────────────────────
+
+class FuseRequest(BaseModel):
+    run_id: str
+
+class GGUFRequest(BaseModel):
+    run_id: str
+    quantization: str = "q4_0"
+
+class PushRequest(BaseModel):
+    run_id: str
+    repo_id: str
+    hf_token: str
+
+
+@app.post("/export/fuse")
+async def fuse_adapters(req: FuseRequest):
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, _fuse, req.run_id)
+
+def _fuse(run_id: str) -> dict:
+    import subprocess, json as _json
+    from pathlib import Path as P
+    run_dir   = P("runs") / run_id
+    fused_dir = run_dir / "fused"
+    model_name = "mlx-community/Qwen1.5-0.5B-Chat"
+    meta_path  = run_dir / "run.json"
+    if meta_path.exists():
+        try:
+            model_name = _json.loads(meta_path.read_text()).get("model", model_name)
+        except Exception:
+            pass
+    fused_dir.mkdir(parents=True, exist_ok=True)
+    cmd = ["python", "-m", "mlx_lm.fuse",
+           "--model", model_name,
+           "--adapter-path", str(run_dir),
+           "--save-path", str(fused_dir),
+           "--dequantize"]
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+        if proc.returncode != 0:
+            return {"error": proc.stderr[-2000:]}
+        return {"fused_path": str(fused_dir), "model": model_name, "run_id": run_id}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.post("/export/gguf")
+async def convert_gguf(req: GGUFRequest):
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, _convert_gguf, req.run_id, req.quantization)
+
+def _convert_gguf(run_id: str, quantization: str) -> dict:
+    import subprocess
+    from pathlib import Path as P
+    run_dir   = P("runs") / run_id
+    fused_dir = run_dir / "fused"
+    gguf_out  = run_dir / f"model-{quantization}.gguf"
+    if not fused_dir.exists():
+        return {"error": "Fused model not found — run /export/fuse first"}
+    # Read model name from run metadata
+    import json as _j
+    model_name = "mlx-community/Qwen1.5-0.5B-Chat"
+    meta = run_dir / "run.json"
+    if meta.exists():
+        try: model_name = _j.loads(meta.read_text()).get("model", model_name)
+        except Exception: pass
+    cmd = ["mlx_lm.fuse",
+           "--model", model_name,
+           "--adapter-path", str(run_dir),
+           "--export-gguf",
+           "--gguf-path", str(gguf_out)]
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+        if proc.returncode != 0:
+            return {"error": proc.stderr[-2000:]}
+        return {"gguf_path": str(gguf_out), "quantization": quantization, "run_id": run_id}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.post("/export/push")
+async def push_to_hub(req: PushRequest):
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, _push, req.run_id, req.repo_id, req.hf_token)
+
+def _push(run_id: str, repo_id: str, hf_token: str) -> dict:
+    from pathlib import Path as P
+    fused_dir = P("runs") / run_id / "fused"
+    if not fused_dir.exists():
+        return {"error": "Fused model not found — run /export/fuse first"}
+    try:
+        from huggingface_hub import HfApi
+        api = HfApi(token=hf_token)
+        api.create_repo(repo_id=repo_id, exist_ok=True, private=True)
+        api.upload_folder(folder_path=str(fused_dir), repo_id=repo_id,
+                          commit_message=f"Upload fine-tuned model (run {run_id})")
+        return {"url": f"https://huggingface.co/{repo_id}", "run_id": run_id}
+    except Exception as e:
+        import traceback
+        return {"error": str(e), "traceback": traceback.format_exc()[-1000:]}
