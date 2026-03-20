@@ -22,6 +22,7 @@ _active_run: dict = {}
 
 class RunRequest(BaseModel):
     config: str = "configs/test.yaml"
+    model: str = "mlx-community/Qwen1.5-0.5B-Chat"
 
 
 def _run_training_sync(cfg, run_id: str, queue: asyncio.Queue, loop: asyncio.AbstractEventLoop):
@@ -145,6 +146,8 @@ async def start_run(req: RunRequest):
     except Exception as e:
         return {"error": f"Bad config: {e}"}
 
+    cfg.model.name = req.model
+
     run_id = uuid.uuid4().hex[:8]
     queue: asyncio.Queue = asyncio.Queue()
     _log_queues[run_id] = queue
@@ -198,3 +201,17 @@ async def health():
         "status": "ok",
         "active_run": _active_run.get("run_id") if _active_run.get("running") else None,
     }
+
+
+@app.get("/models")
+async def list_models():
+    return {"models": [
+        {"id": "mlx-community/Qwen1.5-0.5B-Chat",       "label": "Qwen 1.5 0.5B Chat",      "vram": "~1GB"},
+        {"id": "mlx-community/Qwen1.5-1.8B-Chat",       "label": "Qwen 1.5 1.8B Chat",      "vram": "~2GB"},
+        {"id": "mlx-community/Qwen2-0.5B-Instruct-4bit","label": "Qwen2 0.5B Instruct 4bit", "vram": "~0.5GB"},
+        {"id": "mlx-community/Qwen2-1.5B-Instruct-4bit","label": "Qwen2 1.5B Instruct 4bit", "vram": "~1GB"},
+        {"id": "mlx-community/Mistral-7B-Instruct-v0.3-4bit", "label": "Mistral 7B Instruct 4bit", "vram": "~4GB"},
+        {"id": "mlx-community/Meta-Llama-3.1-8B-Instruct-4bit","label": "Llama 3.1 8B Instruct 4bit","vram": "~5GB"},
+        {"id": "mlx-community/gemma-2-2b-it-4bit",      "label": "Gemma 2 2B Instruct 4bit", "vram": "~2GB"},
+        {"id": "mlx-community/phi-2",                   "label": "Phi-2 2.7B",               "vram": "~2GB"},
+    ]}
