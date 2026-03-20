@@ -4,7 +4,7 @@ import uuid
 import datetime
 from pathlib import Path
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -23,6 +23,7 @@ _active_run: dict = {}
 class RunRequest(BaseModel):
     config: str = "configs/test.yaml"
     model: str = "mlx-community/Qwen1.5-0.5B-Chat"
+    dataset: str = "data/train.jsonl"
 
 
 def _run_training_sync(cfg, run_id: str, queue: asyncio.Queue, loop: asyncio.AbstractEventLoop):
@@ -147,6 +148,7 @@ async def start_run(req: RunRequest):
         return {"error": f"Bad config: {e}"}
 
     cfg.model.name = req.model
+    cfg.dataset.path = req.dataset
 
     run_id = uuid.uuid4().hex[:8]
     queue: asyncio.Queue = asyncio.Queue()
@@ -215,3 +217,20 @@ async def list_models():
         {"id": "mlx-community/gemma-2-2b-it-4bit",      "label": "Gemma 2 2B Instruct 4bit", "vram": "~2GB"},
         {"id": "mlx-community/phi-2",                   "label": "Phi-2 2.7B",               "vram": "~2GB"},
     ]}
+
+
+@app.post("/upload")
+async def upload_dataset(file: UploadFile):
+    import shutil
+    uploads_dir = Path("data/uploads")
+    uploads_dir.mkdir(parents=True, exist_ok=True)
+    dest = uploads_dir / file.filename
+    with dest.open("wb") as f:
+        shutil.copyfileobj(file.file, f)
+    from pipeline.ingestor import load_jsonl, validate
+    try:
+        rows = load_jsonl(str(dest))
+        valid = validate(rows, "instruct")
+        return {"path": str(dest), "total": len(rows), "valid": len(valid), "filename": file.filename}
+    except Exception as e:
+        return {"error": str(e), "path": str(dest)}
