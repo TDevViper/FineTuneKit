@@ -95,6 +95,17 @@ def _train_mlx(train_texts, val_texts, cfg, mlx_train, mlx_evaluate, TrainingArg
         console.print(f"Iter {it:3d}: loss={loss_val:.3f}  grad_norm={norm_val:.2f}  lr={lr:.2e}")
 
     model.save_weights(adapter_file)
+    import json as _json
+    _cfg = {
+        'num_layers': cfg.training.lora_rank,
+        'lora_parameters': {
+            'rank': cfg.training.lora_rank,
+            'alpha': cfg.training.lora_alpha,
+            'dropout': cfg.training.lora_dropout,
+            'scale': cfg.training.lora_alpha / cfg.training.lora_rank
+        }
+    }
+    (output_dir / 'adapter_config.json').write_text(_json.dumps(_cfg, indent=2))
     console.print(f"[green]Saved adapters → {adapter_file}[/green]")
 
     metrics = {

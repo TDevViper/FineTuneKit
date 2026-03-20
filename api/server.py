@@ -234,3 +234,52 @@ async def upload_dataset(file: UploadFile):
         return {"path": str(dest), "total": len(rows), "valid": len(valid), "filename": file.filename}
     except Exception as e:
         return {"error": str(e), "path": str(dest)}
+
+
+
+class InferRequest(BaseModel):
+    prompt: str
+    run_id: str
+    max_tokens: int = 200
+
+
+@app.post("/infer")
+async def infer_finetuned(req: InferRequest):
+    loop = asyncio.get_event_loop()
+    result = await loop.run_in_executor(None, _run_infer, req.prompt, req.run_id, True, req.max_tokens)
+    return result
+
+
+@app.post("/infer/base")
+async def infer_base(req: InferRequest):
+    loop = asyncio.get_event_loop()
+    result = await loop.run_in_executor(None, _run_infer, req.prompt, req.run_id, False, req.max_tokens)
+    return result
+
+
+def _run_infer(prompt, run_id, use_adapters, max_tokens):
+    import time
+    from mlx_lm import load, generate
+    from pathlib import Path as P
+
+    run_dir      = P("runs") / run_id
+    adapter_file = run_dir / "adapters.safetensors"
+
+    try:
+        if use_adapters and adapter_file.exists():
+            model, tokenizer = load(
+                "mlx-community/Qwen1.5-0.5B-Chat",
+                adapter_path=str(run_dir)
+            )
+        else:
+            model, tokenizer = load("mlx-community/Qwen1.5-0.5B-Chat")
+
+        nl = chr(10)
+        formatted = "<|im_start|>user" + nl + prompt + "<|im_end|>" + nl + "<|im_start|>assistant" + nl
+        t0 = time.time()
+        response = generate(model, tokenizer, prompt=formatted, max_tokens=max_tokens, verbose=False)
+        elapsed = round(time.time() - t0, 2)
+        return {"response": response, "elapsed": elapsed, "used_adapters": use_adapters}
+    except Exception as e:
+        import traceback
+        return {"error": str(e), "traceback": traceback.format_exc()}
