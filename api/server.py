@@ -18,6 +18,7 @@ app.add_middleware(
 
 _log_queues: dict[str, asyncio.Queue] = {}
 _active_run: dict = {}
+_cancel_flag: dict = {"requested": False}
 
 
 class RunRequest(BaseModel):
@@ -103,6 +104,9 @@ def _run_training_sync(cfg, run_id: str, queue: asyncio.Queue, loop: asyncio.Abs
             optimizer.update(model, grads)
             mx.eval(model.parameters(), optimizer.state)
             loss_val = loss.item()
+            if _cancel_flag.get("requested"):
+                emit({"status": "cancelled", "done": True})
+                return
             emit({
                 "iter":      it,
                 "total":     iters,
@@ -155,12 +159,21 @@ async def start_run(req: RunRequest):
     _log_queues[run_id] = queue
     _active_run["running"] = True
     _active_run["run_id"]  = run_id
+    _cancel_flag["requested"] = False
 
     loop = asyncio.get_event_loop()
     loop.run_in_executor(None, _run_training_sync, cfg, run_id, queue, loop)
 
     return {"run_id": run_id, "status": "started", "config": req.config}
 
+
+
+@app.post("/cancel")
+async def cancel_run():
+    if not _active_run.get("running"):
+        return {"error": "No active run to cancel"}
+    _cancel_flag["requested"] = True
+    return {"status": "cancel_requested", "run_id": _active_run.get("run_id")}
 
 @app.get("/runs")
 async def list_runs():
@@ -395,4 +408,6 @@ def _push(run_id: str, repo_id: str, hf_token: str) -> dict:
         return {"url": f"https://huggingface.co/{repo_id}", "run_id": run_id}
     except Exception as e:
         import traceback
-        return {"error": str(e), "traceback": traceback.format_exc()[-1000:]}
+        err = traceback.format_exc()
+        err = err.replace(hf_token, "***") if hf_token in err else err
+        return {"error": str(e), "traceback": err[-1000:]}
