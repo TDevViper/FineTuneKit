@@ -175,6 +175,68 @@ async def cancel_run():
     _cancel_flag["requested"] = True
     return {"status": "cancel_requested", "run_id": _active_run.get("run_id")}
 
+
+@app.delete("/runs/{run_id}")
+async def delete_run(run_id: str):
+    import shutil
+    from pathlib import Path as P
+    run_dir = P("runs") / run_id
+    if run_dir.exists():
+        shutil.rmtree(run_dir)
+    registry_file = P("runs/registry.json")
+    if registry_file.exists():
+        import fcntl
+        with open(registry_file, "a+") as f:
+            fcntl.flock(f, fcntl.LOCK_EX)
+            f.seek(0)
+            content = f.read().strip()
+            records = [r for r in (json.loads(content) if content else []) if r.get("run_id") != run_id]
+            f.seek(0); f.truncate()
+            f.write(json.dumps(records, indent=2))
+            fcntl.flock(f, fcntl.LOCK_UN)
+    return {"deleted": run_id}
+
+
+@app.delete("/runs/{run_id}")
+async def delete_run(run_id: str):
+    import shutil
+    from pathlib import Path as P
+    run_dir = P("runs") / run_id
+    if run_dir.exists():
+        shutil.rmtree(run_dir)
+    registry_file = P("runs/registry.json")
+    if registry_file.exists():
+        import fcntl
+        with open(registry_file, "a+") as f:
+            fcntl.flock(f, fcntl.LOCK_EX)
+            f.seek(0)
+            content = f.read().strip()
+            records = [r for r in (json.loads(content) if content else []) if r.get("run_id") != run_id]
+            f.seek(0); f.truncate()
+            f.write(json.dumps(records, indent=2))
+            fcntl.flock(f, fcntl.LOCK_UN)
+    return {"deleted": run_id}
+
+
+@app.delete("/runs/{run_id}")
+async def delete_run(run_id: str):
+    import shutil, fcntl
+    from pathlib import Path as P
+    run_dir = P("runs") / run_id
+    if run_dir.exists():
+        shutil.rmtree(run_dir)
+    registry_file = P("runs/registry.json")
+    if registry_file.exists():
+        with open(registry_file, "a+") as f:
+            fcntl.flock(f, fcntl.LOCK_EX)
+            f.seek(0)
+            content = f.read().strip()
+            records = [r for r in (json.loads(content) if content else []) if r.get("run_id") != run_id]
+            f.seek(0); f.truncate()
+            f.write(json.dumps(records, indent=2))
+            fcntl.flock(f, fcntl.LOCK_UN)
+    return {"deleted": run_id}
+
 @app.get("/runs")
 async def list_runs():
     registry_file = Path("runs/registry.json")

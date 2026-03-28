@@ -7,7 +7,8 @@ import axios from "axios"
 
 const API = "http://localhost:8000"
 
-interface LossPoint { iter: number; loss: number }
+interface LossPoint  { iter: number; loss: number; grad_norm?: number }
+interface LogLine    { iter: number; loss: number; grad_norm: number; lr: number }
 interface Run {
   run_id: string; model: string; created: string
   metrics: { final_loss: number; rouge?: { rouge1: number; rougeL: number } }
@@ -15,42 +16,39 @@ interface Run {
 interface Model { id: string; label: string; vram: string }
 type Nav = "train" | "runs" | "infer" | "export"
 
-const T = {
-  bg:       "#0a0a0a",
-  surface:  "#111111",
-  border:   "#1e1e1e",
-  border2:  "#2a2a2a",
-  text:     "#ededed",
-  muted:    "#666",
-  muted2:   "#444",
-  accent:   "#5b8df6",
-  accentDim:"#1d2d4a",
-  green:    "#3dd68c",
-  greenDim: "#0d2a1c",
-  red:      "#f75c5c",
-  yellow:   "#f5a623",
-  font:     "\'Berkeley Mono\', \'Fira Code\', monospace",
-  fontSans: "\'DM Sans\', \'Inter\', sans-serif",
+const Icon = {
+  Train:    () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>,
+  Runs:     () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>,
+  Infer:    () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>,
+  Export:   () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>,
+  Play:     () => <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>,
+  Stop:     () => <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>,
+  Download: () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,
+  Trash:    () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>,
+  Logo:     () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"/></svg>,
 }
 
 const GLOBAL_CSS = `
-  @import url(\'https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap\');
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap');
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #0a0a0a; color: #ededed; font-family: \'DM Sans\', sans-serif; font-size: 13px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  body { background: #0a0a0a; color: #ededed; font-family: 'DM Sans', sans-serif; font-size: 13px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
   ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 2px; }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
   @keyframes pulse  { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
   @keyframes spin   { to { transform: rotate(360deg); } }
   .fade-in { animation: fadeIn 0.25s ease both; }
-  input, select, textarea { background: #111; border: 1px solid #2a2a2a; color: #ededed; border-radius: 6px; padding: 8px 12px; font-size: 13px; font-family: \'DM Sans\', sans-serif; outline: none; transition: border-color 0.15s; }
+  input, select, textarea { background: #111; border: 1px solid #2a2a2a; color: #ededed; border-radius: 6px; padding: 8px 12px; font-size: 13px; font-family: 'DM Sans', sans-serif; outline: none; transition: border-color 0.15s; }
   input:focus, select:focus, textarea:focus { border-color: #5b8df6; }
+  input[type=range] { padding: 0; border: none; background: transparent; accent-color: #5b8df6; cursor: pointer; }
   input::placeholder, textarea::placeholder { color: #666; }
-  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 16px; border-radius: 6px; border: none; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s; font-family: \'DM Sans\', sans-serif; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 16px; border-radius: 6px; border: none; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s; font-family: 'DM Sans', sans-serif; }
   .btn:disabled { opacity: 0.35; cursor: not-allowed; }
   .btn-primary { background: #5b8df6; color: #fff; }
   .btn-primary:hover:not(:disabled) { background: #7aaaff; }
   .btn-ghost { background: #1e1e1e; color: #ededed; }
   .btn-ghost:hover:not(:disabled) { background: #2a2a2a; }
+  .btn-danger { background: #3a0000; color: #f75c5c; border: 1px solid #5a0000; }
+  .btn-danger:hover:not(:disabled) { background: #4a0000; }
   .btn-success { background: #3dd68c; color: #000; }
   .btn-success:hover:not(:disabled) { background: #5cf0ac; }
   .card { background: #111111; border: 1px solid #1e1e1e; border-radius: 10px; padding: 20px; }
@@ -59,6 +57,8 @@ const GLOBAL_CSS = `
   .tag-blue   { background: #1d2d4a; color: #5b8df6; }
   .tag-yellow { background: #2a1f00; color: #f5a623; }
   .tag-muted  { background: #1a1a1a; color: #666; }
+  .log-panel  { font-family: 'Berkeley Mono','Fira Code',monospace; font-size: 11px; line-height: 1.8; color: #aaa; background: #0d0d0d; border: 1px solid #1e1e1e; border-radius: 8px; padding: 12px 14px; height: 180px; overflow-y: auto; }
+  .log-panel::-webkit-scrollbar { width: 3px; }
 `
 
 function Spinner() {
@@ -79,18 +79,41 @@ function Label({ children, style }: { children: React.ReactNode; style?: React.C
   return <div style={{ fontSize:12, fontWeight:500, color:"#666", marginBottom:6, ...style }}>{children}</div>
 }
 
+function Slider({ label, value, min, max, step, format, onChange, disabled }: {
+  label: string; value: number; min: number; max: number; step: number
+  format: (v: number) => string; onChange: (v: number) => void; disabled?: boolean
+}) {
+  return (
+    <div>
+      <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
+        <Label style={{ margin:0 }}>{label}</Label>
+        <span style={{ fontSize:12, color:"#5b8df6", fontFamily:"monospace" }}>{format(value)}</span>
+      </div>
+      <input type="range" min={min} max={max} step={step} value={value}
+        onChange={e => onChange(Number(e.target.value))} disabled={disabled}
+        style={{ width:"100%" }} />
+      <div style={{ display:"flex", justifyContent:"space-between", marginTop:2 }}>
+        <span style={{ fontSize:10, color:"#444" }}>{format(min)}</span>
+        <span style={{ fontSize:10, color:"#444" }}>{format(max)}</span>
+      </div>
+    </div>
+  )
+}
+
 function Sidebar({ nav, setNav, running }: { nav: Nav; setNav: (n: Nav) => void; running: boolean }) {
-  const items: { id: Nav; label: string; icon: string }[] = [
-    { id:"train",  label:"Train",     icon:"⚡" },
-    { id:"runs",   label:"Runs",      icon:"📊" },
-    { id:"infer",  label:"Inference", icon:"🔀" },
-    { id:"export", label:"Export",    icon:"📦" },
+  const items: { id: Nav; label: string; Icon: () => JSX.Element }[] = [
+    { id:"train",  label:"Train",     Icon: Icon.Train },
+    { id:"runs",   label:"Runs",      Icon: Icon.Runs },
+    { id:"infer",  label:"Inference", Icon: Icon.Infer },
+    { id:"export", label:"Export",    Icon: Icon.Export },
   ]
   return (
     <aside style={{ width:200, minHeight:"100vh", background:"#111111", borderRight:"1px solid #1e1e1e", display:"flex", flexDirection:"column", padding:"24px 0", flexShrink:0 }}>
       <div style={{ padding:"0 20px 28px" }}>
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-          <div style={{ width:28, height:28, borderRadius:7, background:"linear-gradient(135deg, #5b8df6, #8b5cf6)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:14 }}>⚗</div>
+          <div style={{ width:28, height:28, borderRadius:7, background:"linear-gradient(135deg, #5b8df6, #8b5cf6)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+            <Icon.Logo />
+          </div>
           <div>
             <div style={{ fontWeight:600, fontSize:14, letterSpacing:"-0.02em" }}>FineTuneKit</div>
             <div style={{ fontSize:10, color:"#666", marginTop:1 }}>Apple Silicon LoRA</div>
@@ -98,13 +121,13 @@ function Sidebar({ nav, setNav, running }: { nav: Nav; setNav: (n: Nav) => void;
         </div>
       </div>
       <nav style={{ flex:1, padding:"0 10px" }}>
-        {items.map(item => {
-          const active = nav === item.id
+        {items.map(({ id, label, Icon: Ic }) => {
+          const active = nav === id
           return (
-            <button key={item.id} onClick={() => setNav(item.id)} style={{ width:"100%", display:"flex", alignItems:"center", gap:10, padding:"8px 12px", borderRadius:7, border:"none", cursor:"pointer", background: active?"#1d2d4a":"transparent", color: active?"#5b8df6":"#666", fontWeight: active?500:400, fontSize:13, marginBottom:2, transition:"all 0.15s", fontFamily:"DM Sans, sans-serif" }}>
-              <span style={{ fontSize:14 }}>{item.icon}</span>
-              {item.label}
-              {item.id==="train" && running && <span style={{ marginLeft:"auto" }}><Spinner /></span>}
+            <button key={id} onClick={() => setNav(id)} style={{ width:"100%", display:"flex", alignItems:"center", gap:10, padding:"8px 12px", borderRadius:7, border:"none", cursor:"pointer", background: active?"#1d2d4a":"transparent", color: active?"#5b8df6":"#666", fontWeight: active?500:400, fontSize:13, marginBottom:2, transition:"all 0.15s", fontFamily:"DM Sans, sans-serif" }}>
+              <Ic />
+              {label}
+              {id==="train" && running && <span style={{ marginLeft:"auto" }}><Spinner /></span>}
             </button>
           )
         })}
@@ -119,12 +142,24 @@ function Sidebar({ nav, setNav, running }: { nav: Nav; setNav: (n: Nav) => void;
   )
 }
 
-function TrainTab({ models, running, status, lossData, progress, runId, selectedModel, setSelectedModel, dataset, setDataset, uploadInfo, uploading, dragOver, setDragOver, onFileUpload, onStart }: any) {
-  const selMeta = models.find((m: Model) => m.id === selectedModel)
+function TrainTab({ models, running, status, lossData, logLines, progress, runId,
+  selectedModel, setSelectedModel, dataset, setDataset, uploadInfo, uploading,
+  dragOver, setDragOver, onFileUpload, onStart, onStop,
+  epochs, setEpochs, lr, setLr, rank, setRank }: any) {
+
+  const selMeta  = models.find((m: Model) => m.id === selectedModel)
+  const logRef   = useRef<HTMLDivElement>(null)
+  const gradData = lossData.filter((p: LossPoint) => p.grad_norm != null)
+
+  useEffect(() => {
+    if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight
+  }, [logLines])
+
   return (
-    <div className="fade-in" style={{ maxWidth:760 }}>
-      <SectionHeader title="New Training Run" subtitle="Configure and launch a LoRA fine-tuning job" />
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:16 }}>
+    <div className="fade-in" style={{ maxWidth:800 }}>
+      <SectionHeader title="New Training Run" subtitle="Configure and launch a LoRA fine-tuning job. Cmd+Enter to start." />
+
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:14 }}>
         <div className="card">
           <Label>Base Model</Label>
           <select value={selectedModel} onChange={e => setSelectedModel(e.target.value)} disabled={running} style={{ width:"100%", marginBottom:8 }}>
@@ -132,22 +167,52 @@ function TrainTab({ models, running, status, lossData, progress, runId, selected
           </select>
           {selMeta && <div style={{ display:"flex", gap:6 }}><span className="tag tag-blue">{selMeta.vram}</span><span className="tag tag-muted">{selMeta.id.split("/")[1]}</span></div>}
         </div>
+
         <div className="card">
           <Label>Dataset</Label>
-          <div onDrop={e => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files[0]; if(f) onFileUpload(f) }} onDragOver={e => { e.preventDefault(); setDragOver(true) }} onDragLeave={() => setDragOver(false)} onClick={() => document.getElementById("file-input")?.click()}
+          <div onDrop={e => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files[0]; if(f) onFileUpload(f) }}
+            onDragOver={e => { e.preventDefault(); setDragOver(true) }} onDragLeave={() => setDragOver(false)}
+            onClick={() => document.getElementById("file-input")?.click()}
             style={{ border:`1px dashed ${dragOver?"#5b8df6":"#2a2a2a"}`, borderRadius:6, padding:"14px 12px", cursor:"pointer", background: dragOver?"#1d2d4a":"transparent", textAlign:"center", transition:"all 0.15s", marginBottom:8 }}>
-            {uploading ? <span style={{ color:"#666" }}><Spinner />&nbsp;Uploading…</span> : uploadInfo ? <span style={{ color:"#3dd68c" }}>✓ {uploadInfo.filename}</span> : <span style={{ color:"#666" }}>Drop .jsonl or click to browse</span>}
+            {uploading ? <span style={{ color:"#666" }}><Spinner />&nbsp;Uploading…</span>
+              : uploadInfo ? <span style={{ color:"#3dd68c" }}>✓ {uploadInfo.filename}</span>
+              : <span style={{ color:"#666" }}>Drop .jsonl or click to browse</span>}
           </div>
-          {uploadInfo && <div style={{ display:"flex", gap:6 }}><span className="tag tag-green">{uploadInfo.valid} valid</span><span className="tag tag-muted">{uploadInfo.total} total</span></div>}
+          {uploadInfo && (
+            <div style={{ display:"flex", gap:6 }}>
+              <span className="tag tag-green">{uploadInfo.valid} valid</span>
+              <span className="tag tag-muted">{uploadInfo.total} total</span>
+            </div>
+          )}
           <input id="file-input" type="file" accept=".jsonl" style={{ display:"none" }} onChange={e => e.target.files?.[0] && onFileUpload(e.target.files[0])} />
         </div>
       </div>
-      <div className="card" style={{ marginBottom:20 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:14 }}>
-          <button className="btn btn-primary" onClick={onStart} disabled={running}>{running ? <><Spinner /> Training…</> : "▶ Start Run"}</button>
+
+      <div className="card" style={{ marginBottom:14 }}>
+        <Label style={{ marginBottom:16 }}>Hyperparameters</Label>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:20 }}>
+          <Slider label="Epochs" value={epochs} min={1} max={10} step={1}
+            format={v => `${v}`} onChange={setEpochs} disabled={running} />
+          <Slider label="Learning Rate" value={lr} min={1e-5} max={1e-3} step={1e-5}
+            format={v => v.toExponential(0)} onChange={setLr} disabled={running} />
+          <Slider label="LoRA Rank" value={rank} min={4} max={64} step={4}
+            format={v => `${v}`} onChange={setRank} disabled={running} />
+        </div>
+      </div>
+
+      <div className="card" style={{ marginBottom:14 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:12, flexWrap:"wrap" }}>
+          <button className="btn btn-primary" onClick={onStart} disabled={running}>
+            <Icon.Play /> Start Run
+          </button>
+          {running && (
+            <button className="btn btn-danger" onClick={onStop}>
+              <Icon.Stop /> Stop
+            </button>
+          )}
           <span style={{ color:"#666", fontSize:12 }}>{status}</span>
           {running && progress.total > 0 && (
-            <div style={{ flex:1, maxWidth:220 }}>
+            <div style={{ flex:1, minWidth:160 }}>
               <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
                 <span style={{ fontSize:11, color:"#666" }}>Progress</span>
                 <span style={{ fontSize:11, color:"#666", fontFamily:"monospace" }}>{progress.iter}/{progress.total}</span>
@@ -159,44 +224,86 @@ function TrainTab({ models, running, status, lossData, progress, runId, selected
           )}
         </div>
       </div>
+
       {lossData.length > 0 && (
-        <div className="card fade-in">
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", marginBottom:16 }}>
-            <Label style={{ margin:0 }}>Live Loss</Label>
-            <span style={{ fontSize:11, color:"#666", fontFamily:"monospace" }}>{runId}</span>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:14 }}>
+          <div className="card fade-in">
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", marginBottom:12 }}>
+              <Label style={{ margin:0 }}>Loss</Label>
+              <span style={{ fontSize:11, color:"#666", fontFamily:"monospace" }}>{runId}</span>
+            </div>
+            <ResponsiveContainer width="100%" height={160}>
+              <LineChart data={lossData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1e1e1e" />
+                <XAxis dataKey="iter" tick={{ fontSize:10, fill:"#666" }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize:10, fill:"#666" }} axisLine={false} tickLine={false} width={40} />
+                <Tooltip contentStyle={{ background:"#111", border:"1px solid #2a2a2a", borderRadius:6, fontSize:12 }} labelStyle={{ color:"#666" }} formatter={(v: any) => [Number(v).toFixed(4), "loss"]} />
+                <Line type="monotone" dataKey="loss" stroke="#5b8df6" dot={false} strokeWidth={1.5} />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
-          <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={lossData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e1e1e" />
-              <XAxis dataKey="iter" tick={{ fontSize:10, fill:"#666" }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize:10, fill:"#666" }} axisLine={false} tickLine={false} width={40} />
-              <Tooltip contentStyle={{ background:"#111", border:"1px solid #2a2a2a", borderRadius:6, fontSize:12 }} labelStyle={{ color:"#666" }} formatter={(v: any) => [Number(v).toFixed(4), "loss"]} />
-              <Line type="monotone" dataKey="loss" stroke="#5b8df6" dot={false} strokeWidth={1.5} />
-            </LineChart>
-          </ResponsiveContainer>
+
+          <div className="card fade-in">
+            <Label style={{ marginBottom:12 }}>Grad Norm</Label>
+            <ResponsiveContainer width="100%" height={160}>
+              <LineChart data={gradData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1e1e1e" />
+                <XAxis dataKey="iter" tick={{ fontSize:10, fill:"#666" }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize:10, fill:"#666" }} axisLine={false} tickLine={false} width={40} />
+                <Tooltip contentStyle={{ background:"#111", border:"1px solid #2a2a2a", borderRadius:6, fontSize:12 }} labelStyle={{ color:"#666" }} formatter={(v: any) => [Number(v).toFixed(3), "grad norm"]} />
+                <Line type="monotone" dataKey="grad_norm" stroke="#f5a623" dot={false} strokeWidth={1.5} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
+      {logLines.length > 0 && (
+        <div className="card fade-in" style={{ padding:0, overflow:"hidden" }}>
+          <div style={{ padding:"12px 14px 10px", borderBottom:"1px solid #1e1e1e", display:"flex", justifyContent:"space-between" }}>
+            <Label style={{ margin:0 }}>Training Log</Label>
+            <span style={{ fontSize:11, color:"#444" }}>{logLines.length} lines</span>
+          </div>
+          <div className="log-panel" ref={logRef}>
+            {logLines.map((l: LogLine, i: number) => (
+              <div key={i} style={{ display:"grid", gridTemplateColumns:"60px 100px 100px 1fr", gap:8 }}>
+                <span style={{ color:"#444" }}>#{l.iter}</span>
+                <span>loss <span style={{ color:"#5b8df6" }}>{l.loss.toFixed(4)}</span></span>
+                <span>gnorm <span style={{ color:"#f5a623" }}>{l.grad_norm?.toFixed(3) ?? "—"}</span></span>
+                <span style={{ color:"#555" }}>lr {l.lr?.toExponential(2) ?? "—"}</span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>
   )
 }
 
-function RunsTab({ runs }: { runs: Run[] }) {
+function RunsTab({ runs, onDelete }: { runs: Run[]; onDelete: (id: string) => void }) {
   const chartData = runs.slice(0,8).reverse().map(r => ({
     id: r.run_id.slice(0,6),
     loss:   r.metrics?.final_loss ?? 0,
     rouge1: r.metrics?.rouge?.rouge1 ?? 0,
     rougeL: r.metrics?.rouge?.rougeL ?? 0,
   }))
+
   if (runs.length === 0) return (
     <div className="fade-in" style={{ maxWidth:860 }}>
       <SectionHeader title="Run History" subtitle="0 runs" />
-      <div style={{ textAlign:"center", padding:"48px 20px", color:"#666" }}><div style={{ fontSize:32, marginBottom:10 }}>📭</div><div>No runs yet. Start a training run to see results here.</div></div>
+      <div style={{ textAlign:"center", padding:"48px 20px", color:"#666" }}>
+        <div style={{ marginBottom:12 }}><Icon.Runs /></div>
+        <div>No runs yet. Start a training run to see results here.</div>
+      </div>
     </div>
   )
+
   const best = [...runs].sort((a,b) => (a.metrics?.final_loss??99)-(b.metrics?.final_loss??99))[0]
+
   return (
-    <div className="fade-in" style={{ maxWidth:860 }}>
+    <div className="fade-in" style={{ maxWidth:920 }}>
       <SectionHeader title="Run History" subtitle={`${runs.length} completed run${runs.length!==1?"s":""}`} />
+
       {runs.length > 1 && (
         <div className="card" style={{ marginBottom:16 }}>
           <Label style={{ marginBottom:14 }}>Run Comparison</Label>
@@ -214,19 +321,21 @@ function RunsTab({ runs }: { runs: Run[] }) {
           </ResponsiveContainer>
         </div>
       )}
+
       <div style={{ marginBottom:16, padding:"12px 16px", borderRadius:8, background:"#0d2a1c", border:"1px solid #1a4a30", display:"flex", alignItems:"center", gap:10 }}>
-        <span style={{ fontSize:16 }}>🏆</span>
+        <span style={{ color:"#3dd68c", fontSize:16 }}>★</span>
         <div>
           <span style={{ color:"#3dd68c", fontWeight:500 }}>Best run: </span>
           <span style={{ fontFamily:"monospace", color:"#3dd68c", fontSize:12 }}>{best.run_id}</span>
           <span style={{ color:"#666", marginLeft:10, fontSize:12 }}>loss {best.metrics?.final_loss} · ROUGE-1 {best.metrics?.rouge?.rouge1?.toFixed(4)??"—"}</span>
         </div>
       </div>
+
       <div className="card" style={{ padding:0, overflow:"hidden" }}>
         <table style={{ width:"100%", borderCollapse:"collapse" }}>
           <thead>
             <tr style={{ borderBottom:"1px solid #1e1e1e" }}>
-              {["Run ID","Model","Final Loss","ROUGE-1","ROUGE-L","Created"].map(h => (
+              {["Run ID","Model","Final Loss","ROUGE-1","ROUGE-L","Created","Actions"].map(h => (
                 <th key={h} style={{ padding:"12px 16px", textAlign:"left", fontSize:11, fontWeight:500, color:"#666", textTransform:"uppercase", letterSpacing:"0.06em" }}>{h}</th>
               ))}
             </tr>
@@ -242,6 +351,18 @@ function RunsTab({ runs }: { runs: Run[] }) {
                 <td style={{ padding:"12px 16px", fontFamily:"monospace", fontSize:12 }}>{r.metrics?.rouge?.rouge1?.toFixed(4)??"—"}</td>
                 <td style={{ padding:"12px 16px", fontFamily:"monospace", fontSize:12 }}>{r.metrics?.rouge?.rougeL?.toFixed(4)??"—"}</td>
                 <td style={{ padding:"12px 16px", color:"#666", fontSize:11 }}>{r.created?.slice(0,16).replace("T"," ")??"—"}</td>
+                <td style={{ padding:"10px 16px" }}>
+                  <div style={{ display:"flex", gap:6 }}>
+                    <a href={`/runs/${r.run_id}/adapters.safetensors`} download title="Download adapter"
+                      style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"4px 10px", borderRadius:5, background:"#1d2d4a", color:"#5b8df6", fontSize:11, textDecoration:"none" }}>
+                      <Icon.Download /> Adapter
+                    </a>
+                    <button onClick={() => onDelete(r.run_id)} title="Delete run"
+                      style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"4px 10px", borderRadius:5, background:"#1a0000", color:"#f75c5c", fontSize:11, border:"1px solid #2a0000", cursor:"pointer" }}>
+                      <Icon.Trash />
+                    </button>
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -299,7 +420,9 @@ function InferTab({ runs }: { runs: Run[] }) {
         </div>
         <Label>Prompt</Label>
         <textarea value={prompt} onChange={e => setPrompt(e.target.value)} placeholder="Enter a prompt to test…" style={{ width:"100%", minHeight:80, resize:"vertical", marginBottom:12 }} />
-        <button className="btn btn-primary" onClick={go} disabled={busy||!rid||!prompt.trim()}>{busy?<><Spinner /> Generating…</>:"▶ Compare"}</button>
+        <button className="btn btn-primary" onClick={go} disabled={busy||!rid||!prompt.trim()}>
+          {busy?<><Spinner /> Generating…</>:<><Icon.Play /> Compare</>}
+        </button>
       </div>
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
         <RespBox data={base} title="Base model" />
@@ -393,19 +516,23 @@ function ExportTab({ runs }: { runs: Run[] }) {
 }
 
 export default function App() {
-  const [nav, setNav]             = useState<Nav>("train")
-  const [running, setRunning]     = useState(false)
-  const [runId, setRunId]         = useState<string | null>(null)
-  const [lossData, setLossData]   = useState<LossPoint[]>([])
-  const [status, setStatus]       = useState("idle")
-  const [runs, setRuns]           = useState<Run[]>([])
-  const [progress, setProgress]   = useState({ iter: 0, total: 0 })
-  const [models, setModels]       = useState<Model[]>([])
-  const [selModel, setSelModel]   = useState("mlx-community/Qwen1.5-0.5B-Chat")
-  const [dataset, setDataset]     = useState("data/train.jsonl")
-  const [uploading, setUploading] = useState(false)
+  const [nav, setNav]               = useState<Nav>("train")
+  const [running, setRunning]       = useState(false)
+  const [runId, setRunId]           = useState<string | null>(null)
+  const [lossData, setLossData]     = useState<LossPoint[]>([])
+  const [logLines, setLogLines]     = useState<LogLine[]>([])
+  const [status, setStatus]         = useState("idle")
+  const [runs, setRuns]             = useState<Run[]>([])
+  const [progress, setProgress]     = useState({ iter: 0, total: 0 })
+  const [models, setModels]         = useState<Model[]>([])
+  const [selModel, setSelModel]     = useState("mlx-community/Qwen1.5-0.5B-Chat")
+  const [dataset, setDataset]       = useState("data/train.jsonl")
+  const [uploading, setUploading]   = useState(false)
   const [uploadInfo, setUploadInfo] = useState<any>(null)
-  const [dragOver, setDragOver]   = useState(false)
+  const [dragOver, setDragOver]     = useState(false)
+  const [epochs, setEpochs]         = useState(3)
+  const [lr, setLr]                 = useState(2e-4)
+  const [rank, setRank]             = useState(8)
   const wsRef = useRef<WebSocket | null>(null)
 
   useEffect(() => {
@@ -419,6 +546,14 @@ export default function App() {
     fetchRuns()
     axios.get(`${API}/models`).then(r => setModels(r.data.models)).catch(()=>{})
   }, [])
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && !running) onStart()
+    }
+    window.addEventListener("keydown", handler)
+    return () => window.removeEventListener("keydown", handler)
+  }, [running, selModel, dataset])
 
   const fetchRuns = async () => {
     try { const res = await axios.get(`${API}/runs`); setRuns(res.data.runs.slice().reverse()) } catch {}
@@ -435,19 +570,41 @@ export default function App() {
     } finally { setUploading(false) }
   }, [])
 
+  const onStop = async () => {
+    try { await axios.post(`${API}/cancel`) } catch {}
+    setStatus("cancelling…")
+  }
+
+  const onDelete = async (id: string) => {
+    if (!window.confirm(`Delete run ${id}? This cannot be undone.`)) return
+    try { await axios.delete(`${API}/runs/${id}`) } catch {}
+    setRuns(prev => prev.filter(r => r.run_id !== id))
+  }
+
   const onStart = async () => {
-    setLossData([]); setRunning(true); setStatus("starting…")
+    setLossData([]); setLogLines([]); setRunning(true); setStatus("starting…")
     try {
-      const res = await axios.post(`${API}/run`, { config:"configs/test.yaml", model:selModel, dataset })
+      const res = await axios.post(`${API}/run`, {
+        config: "configs/test.yaml", model: selModel, dataset,
+        epochs, learning_rate: lr, lora_rank: rank,
+      })
       if (res.data.error) { setStatus(`error: ${res.data.error}`); setRunning(false); return }
       const id = res.data.run_id; setRunId(id); setStatus("connecting…")
       const ws = new WebSocket(`ws://localhost:8000/ws/logs/${id}`); wsRef.current = ws
       ws.onmessage = (e) => {
         const d = JSON.parse(e.data)
-        if (d.iter) { setLossData(prev => [...prev, { iter:d.iter, loss:d.loss }]); setProgress({ iter:d.iter, total:d.total }); setStatus(`iter ${d.iter}/${d.total}  loss ${d.loss}`) }
-        else if (d.status) { setStatus(d.status.replace(/_/g," ")) }
-        else if (d.done) { setStatus(`done · final loss ${d.final_loss}`); setRunning(false); fetchRuns() }
-        else if (d.error) { setStatus(`error: ${d.error}`); setRunning(false) }
+        if (d.iter) {
+          setLossData(prev => [...prev, { iter:d.iter, loss:d.loss, grad_norm:d.grad_norm }])
+          setLogLines(prev => [...prev, { iter:d.iter, loss:d.loss, grad_norm:d.grad_norm, lr:d.lr }])
+          setProgress({ iter:d.iter, total:d.total })
+          setStatus(`iter ${d.iter}/${d.total}  loss ${d.loss}`)
+        } else if (d.status) {
+          setStatus(d.status.replace(/_/g," "))
+          if (d.status === "cancelled") setRunning(false)
+        } else if (d.done) {
+          setStatus(`done · final loss ${d.final_loss}`)
+          setRunning(false); fetchRuns()
+        } else if (d.error) { setStatus(`error: ${d.error}`); setRunning(false) }
       }
       ws.onerror = () => { setStatus("websocket error"); setRunning(false) }
     } catch (e: any) { setStatus(`error: ${e.message}`); setRunning(false) }
@@ -457,8 +614,8 @@ export default function App() {
     <div style={{ display:"flex", minHeight:"100vh", background:"#0a0a0a" }}>
       <Sidebar nav={nav} setNav={setNav} running={running} />
       <main style={{ flex:1, padding:"32px 36px", overflowY:"auto" }}>
-        {nav==="train"  && <TrainTab models={models} running={running} status={status} lossData={lossData} progress={progress} runId={runId} selectedModel={selModel} setSelectedModel={setSelModel} dataset={dataset} setDataset={setDataset} uploadInfo={uploadInfo} uploading={uploading} dragOver={dragOver} setDragOver={setDragOver} onFileUpload={onFileUpload} onStart={onStart} />}
-        {nav==="runs"   && <RunsTab runs={runs} />}
+        {nav==="train"  && <TrainTab models={models} running={running} status={status} lossData={lossData} logLines={logLines} progress={progress} runId={runId} selectedModel={selModel} setSelectedModel={setSelModel} dataset={dataset} setDataset={setDataset} uploadInfo={uploadInfo} uploading={uploading} dragOver={dragOver} setDragOver={setDragOver} onFileUpload={onFileUpload} onStart={onStart} onStop={onStop} epochs={epochs} setEpochs={setEpochs} lr={lr} setLr={setLr} rank={rank} setRank={setRank} />}
+        {nav==="runs"   && <RunsTab runs={runs} onDelete={onDelete} />}
         {nav==="infer"  && <InferTab runs={runs} />}
         {nav==="export" && <ExportTab runs={runs} />}
       </main>
