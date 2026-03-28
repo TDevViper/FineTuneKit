@@ -101,7 +101,7 @@ function Slider({ label, value, min, max, step, format, onChange, disabled }: {
 }
 
 function Sidebar({ nav, setNav, running }: { nav: Nav; setNav: (n: Nav) => void; running: boolean }) {
-  const items: { id: Nav; label: string; Icon: () => JSX.Element }[] = [
+  const items: { id: Nav; label: string; Icon: () => React.ReactElement }[] = [
     { id:"train",  label:"Train",     Icon: Icon.Train },
     { id:"runs",   label:"Runs",      Icon: Icon.Runs },
     { id:"infer",  label:"Inference", Icon: Icon.Infer },
